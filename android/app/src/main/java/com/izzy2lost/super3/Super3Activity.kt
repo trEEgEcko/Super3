@@ -821,6 +821,29 @@ class Super3Activity : SDLActivity() {
             }
             .create()
 
+        // Sega Rally 2 build: video settings entry in the pause menu.
+        val rallyAct = this@Super3Activity
+        (dialogView as? android.widget.LinearLayout)?.let { box ->
+            val btnVideo = MaterialButton(
+                rallyAct,
+                null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle,
+            )
+            btnVideo.text = "Video settings"
+            btnVideo.isAllCaps = false
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                (52 * resources.displayMetrics.density).toInt(),
+            )
+            val m = (16 * resources.displayMetrics.density).toInt()
+            lp.setMargins(m, m / 2, m, m / 2)
+            box.addView(btnVideo, 1, lp)
+            btnVideo.setOnClickListener {
+                dialog.dismiss()
+                mainHandler.post { RallyVideoSettings.show(rallyAct) }
+            }
+        }
+
         btnSaveStates.setOnClickListener {
             dialog.dismiss()
             mainHandler.post { showSaveStateDialog() }

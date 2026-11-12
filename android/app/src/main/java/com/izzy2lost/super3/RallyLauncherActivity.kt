@@ -90,6 +90,7 @@ class RallyLauncherActivity : AppCompatActivity() {
         thread(name = "RallyPrep") {
             val root = userRoot()
             AssetInstaller.ensureInstalled(this, root)
+            RallyVideoSettings.applyFirstRunDefaults(this)
             val romPath = romFile().absolutePath
             val gamesXml = File(root, "Config/Games.xml").absolutePath
 
