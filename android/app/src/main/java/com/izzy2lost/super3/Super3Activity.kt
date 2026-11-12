@@ -596,6 +596,13 @@ class Super3Activity : SDLActivity() {
                 shifter?.setOnTouchListener(null)
             }
         }
+
+        // Sega Rally 2 build: left/right steering buttons + menu/driving layout toggle.
+        if (isRacing) {
+            (overlay.findViewById<View>(R.id.overlay_controls_root) as? FrameLayout)?.let {
+                RallyControls(it, overlay).attach()
+            }
+        }
     }
 
     private fun angleDiffRad(a: Float, b: Float): Float {
