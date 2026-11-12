@@ -23,13 +23,13 @@ jobs:
           yes | "$SDKMGR" --licenses > /dev/null || true
           "$SDKMGR" "platforms;android-36" "build-tools;36.1.0" "ndk;29.0.14206865" "cmake;3.30.3"
 
-      - name: Build debug APK
+      - name: Build release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
           name: SegaRally2-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/release/*.apk
