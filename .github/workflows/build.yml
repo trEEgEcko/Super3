@@ -29,7 +29,31 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
+      - name: Restore signing key
+        id: ks
+        uses: actions/cache@v4
+        with:
+          path: ~/rally-ks
+          key: rally-keystore-v1
+
+      - name: Create signing key (first time only)
+        if: steps.ks.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/rally-ks"
+          keytool -genkeypair -keystore "$HOME/rally-ks/release.jks" -alias rally \
+            -keyalg RSA -keysize 2048 -validity 36500 \
+            -storepass rallypass -keypass rallypass -dname "CN=SegaRally2 Personal"
+
+      - name: Align and sign APK
+        run: |
+          BT="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools/36.1.0"
+          IN=$(ls android/app/build/outputs/apk/release/*.apk | head -n1)
+          "$BT/zipalign" -f -p 4 "$IN" /tmp/aligned.apk
+          "$BT/apksigner" sign --ks "$HOME/rally-ks/release.jks" \
+            --ks-pass pass:rallypass --key-pass pass:rallypass \
+            --out SegaRally2.apk /tmp/aligned.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: SegaRally2-apk
-          path: android/app/build/outputs/apk/release/*.apk
+          path: SegaRally2.apk
