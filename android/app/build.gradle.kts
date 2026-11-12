@@ -25,7 +25,7 @@ android {
   ndkVersion = "29.0.14206865"
 
   defaultConfig {
-    applicationId = "com.izzy2lost.super3"
+    applicationId = "com.treegecko.srally2"
     minSdk = 26
     targetSdk = 36
 
