@@ -56,5 +56,12 @@
         android:value="super3" />
     </activity>
 
+    <!-- Separate process so the game process can exit before the app relaunches -->
+    <activity
+      android:name=".RestartHelperActivity"
+      android:process=":restart"
+      android:theme="@android:style/Theme.Translucent.NoTitleBar"
+      android:exported="false" />
+
   </application>
 </manifest>
