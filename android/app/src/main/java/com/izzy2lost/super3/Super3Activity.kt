@@ -57,6 +57,7 @@ class Super3Activity : SDLActivity() {
     private var saveDialogOpen = false
     private var exitDialogOpen = false
     private var userPaused = false
+    private var rallyOverlay: RallyOverlay? = null
     private var saveStateSlot = 0
     private var capturingThumbnail = false
     private var gameName: String = ""
@@ -597,10 +598,12 @@ class Super3Activity : SDLActivity() {
             }
         }
 
-        // Sega Rally 2 build: left/right steering buttons + menu/driving layout toggle.
+        // Sega Rally 2 build: custom overlay (analog stick, pedals, coin/start, pause + menu).
         if (isRacing) {
             (overlay.findViewById<View>(R.id.overlay_controls_root) as? FrameLayout)?.let {
-                RallyControls(it, overlay).attach()
+                val ro = RallyOverlay(it, overlay) { showQuickOptionsMenu() }
+                ro.attach()
+                rallyOverlay = ro
             }
         }
     }
@@ -821,26 +824,41 @@ class Super3Activity : SDLActivity() {
             }
             .create()
 
-        // Sega Rally 2 build: video settings entry in the pause menu.
+        // Sega Rally 2 build: extra entries in the pause menu.
         val rallyAct = this@Super3Activity
         (dialogView as? android.widget.LinearLayout)?.let { box ->
-            val btnVideo = MaterialButton(
-                rallyAct,
-                null,
-                com.google.android.material.R.attr.materialButtonOutlinedStyle,
-            )
-            btnVideo.text = "Video settings"
-            btnVideo.isAllCaps = false
-            val lp = android.widget.LinearLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                (52 * resources.displayMetrics.density).toInt(),
-            )
-            val m = (16 * resources.displayMetrics.density).toInt()
-            lp.setMargins(m, m / 2, m, m / 2)
-            box.addView(btnVideo, 1, lp)
+            fun menuButton(label: String, index: Int): MaterialButton {
+                val b = MaterialButton(
+                    rallyAct,
+                    null,
+                    com.google.android.material.R.attr.materialButtonOutlinedStyle,
+                )
+                b.text = label
+                b.isAllCaps = false
+                val lp = android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    (52 * resources.displayMetrics.density).toInt(),
+                )
+                val m = (16 * resources.displayMetrics.density).toInt()
+                lp.setMargins(m, m / 2, m, m / 2)
+                box.addView(b, index, lp)
+                return b
+            }
+
+            val btnVideo = menuButton("Video settings", 1)
             btnVideo.setOnClickListener {
                 dialog.dismiss()
                 mainHandler.post { RallyVideoSettings.show(rallyAct) }
+            }
+
+            val opShown = rallyOverlay?.isOperatorVisible() == true
+            val btnOperator = menuButton(
+                if (opShown) "Hide Test / Service buttons" else "Show Test / Service buttons",
+                2,
+            )
+            btnOperator.setOnClickListener {
+                rallyOverlay?.toggleOperator()
+                dialog.dismiss()
             }
         }
 
