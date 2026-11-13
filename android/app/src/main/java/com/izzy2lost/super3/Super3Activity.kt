@@ -855,7 +855,7 @@ class Super3Activity : SDLActivity() {
             com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog,
         )
             .setTitle(R.string.quick_menu_title)
-            .setView(dialogView)
+            .setView(android.widget.ScrollView(this).apply { addView(dialogView) })
             .setNegativeButton(android.R.string.cancel) { d, _ -> d.dismiss() }
             .setOnDismissListener {
                 quickMenuOpen = false
@@ -863,10 +863,25 @@ class Super3Activity : SDLActivity() {
             }
             .create()
 
-        // Sega Rally 2 build: extra entries in the pause menu.
+        // Sega Rally 2 build: compact 2-column pause menu.
         val rallyAct = this@Super3Activity
         (dialogView as? android.widget.LinearLayout)?.let { box ->
-            fun menuButton(label: String, index: Int): MaterialButton {
+            val density = resources.displayMetrics.density
+            fun dp(v: Int) = (v * density + 0.5f).toInt()
+
+            fun menuRow(index: Int): android.widget.LinearLayout {
+                val row = android.widget.LinearLayout(rallyAct)
+                row.orientation = android.widget.LinearLayout.HORIZONTAL
+                val lp = android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+                lp.setMargins(dp(16), dp(2), dp(16), dp(2))
+                box.addView(row, index, lp)
+                return row
+            }
+
+            fun cell(row: android.widget.LinearLayout, label: String, first: Boolean): MaterialButton {
                 val b = MaterialButton(
                     rallyAct,
                     null,
@@ -874,45 +889,65 @@ class Super3Activity : SDLActivity() {
                 )
                 b.text = label
                 b.isAllCaps = false
-                val lp = android.widget.LinearLayout.LayoutParams(
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                    (52 * resources.displayMetrics.density).toInt(),
-                )
-                val m = (16 * resources.displayMetrics.density).toInt()
-                lp.setMargins(m, m / 2, m, m / 2)
-                box.addView(b, index, lp)
+                b.textSize = 13f
+                b.insetTop = 0
+                b.insetBottom = 0
+                b.setPadding(dp(6), 0, dp(6), 0)
+                val lp = android.widget.LinearLayout.LayoutParams(0, dp(40), 1f)
+                if (!first) lp.marginStart = dp(8)
+                row.addView(b, lp)
                 return b
             }
 
-            val btnVideo = menuButton("Video settings", 1)
+            // Row 1: video + opacity
+            val row1 = menuRow(1)
+            val btnVideo = cell(row1, "Video settings", true)
             btnVideo.setOnClickListener {
                 dialog.dismiss()
                 mainHandler.post { RallyVideoSettings.show(rallyAct) }
             }
-
-            val opShown = rallyOverlay?.isOperatorVisible() == true
-            val btnOperator = menuButton(
-                if (opShown) "Hide Test / Service buttons" else "Show Test / Service buttons",
-                2,
-            )
-            btnOperator.setOnClickListener {
-                rallyOverlay?.toggleOperator()
-                dialog.dismiss()
-            }
-
-            val btnOpacity = menuButton("Controls opacity", 3)
+            val btnOpacity = cell(row1, "Controls opacity", false)
             btnOpacity.setOnClickListener {
                 dialog.dismiss()
                 mainHandler.post { rallyOverlay?.showOpacityDialog(rallyAct) }
             }
 
-            fun modeLabel() = "Touch controls: " +
+            // Row 2: coin/start + test/service toggles
+            val row2 = menuRow(2)
+            fun coinLabel() =
+                "Coin / Start: " + if (rallyOverlay?.isCoinStartVisible() == true) "Shown" else "Hidden"
+            val btnCoin = cell(row2, coinLabel(), true)
+            btnCoin.setOnClickListener {
+                rallyOverlay?.toggleCoinStart()
+                btnCoin.text = coinLabel()
+            }
+            fun opLabel() =
+                "Test / Service: " + if (rallyOverlay?.isOperatorVisible() == true) "Shown" else "Hidden"
+            val btnOperator = cell(row2, opLabel(), false)
+            btnOperator.setOnClickListener {
+                rallyOverlay?.toggleOperator()
+                btnOperator.text = opLabel()
+            }
+
+            // Row 3: controller mapping + touch controls mode
+            val row3 = menuRow(3)
+            val btnMapping = cell(row3, "Controller mapping", true)
+            btnMapping.setOnClickListener {
+                dialog.dismiss()
+                Toast.makeText(rallyAct, "Restart the game after changing mapping", Toast.LENGTH_LONG).show()
+                val i = android.content.Intent(rallyAct, ControlsMappingActivity::class.java)
+                i.putExtra(ControlsMappingActivity.EXTRA_INTERNAL, true)
+                i.putExtra(ControlsMappingActivity.EXTRA_GAME_NAME, gameName)
+                i.putExtra(ControlsMappingActivity.EXTRA_GAME_TITLE, "Sega Rally 2")
+                startActivity(i)
+            }
+            fun modeLabel() = "Touch: " +
                 when (rallyControlsMode) {
                     1 -> "Always show"
                     2 -> "Always hide"
-                    else -> "Auto (hide with gamepad)"
+                    else -> "Auto"
                 }
-            val btnMode = menuButton(modeLabel(), 4)
+            val btnMode = cell(row3, modeLabel(), false)
             btnMode.setOnClickListener {
                 rallyControlsMode = (rallyControlsMode + 1) % 3
                 prefs.edit().putInt("rally_controls_mode", rallyControlsMode).apply()
@@ -920,16 +955,13 @@ class Super3Activity : SDLActivity() {
                 btnMode.text = modeLabel()
             }
 
-            val btnMapping = menuButton("Controller mapping (restart game to apply)", 5)
-            btnMapping.setOnClickListener {
-                dialog.dismiss()
-                val i = android.content.Intent(rallyAct, ControlsMappingActivity::class.java)
-                i.putExtra(ControlsMappingActivity.EXTRA_INTERNAL, true)
-                i.putExtra(ControlsMappingActivity.EXTRA_GAME_NAME, gameName)
-                i.putExtra(ControlsMappingActivity.EXTRA_GAME_TITLE, "Sega Rally 2")
-                startActivity(i)
-            }
+            // Not used in this build.
             btnTouchControls.visibility = View.GONE
+            btnGyroSteering.visibility = View.GONE
+            btnDaytonaTiming.visibility = View.GONE
+            dialogView.findViewById<View>(R.id.timing_note)?.visibility = View.GONE
+            btnSaveStates.visibility = View.GONE
+            btnExitGame.layoutParams.height = dp(44)
         }
 
         btnSaveStates.setOnClickListener {

@@ -51,6 +51,7 @@ class RallyOverlay(
         const val DEFAULT_OPACITY = 0.85f
         const val PREFS = "rally_overlay"
         const val KEY_OPACITY = "opacity"
+        const val KEY_COIN_START = "coin_start_visible"
     }
 
     private val density = root.resources.displayMetrics.density
@@ -61,6 +62,7 @@ class RallyOverlay(
     private val faders = ArrayList<View>()
     private var shiftArmed = true
     private var operatorRow: LinearLayout? = null
+    private val coinStartViews = ArrayList<View>()
 
     private fun dp(v: Int): Int = (v * density + 0.5f).toInt()
 
@@ -287,7 +289,22 @@ class RallyOverlay(
 
         place(coin, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, 0, 0, 0, 14)
         place(start, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, 0, 0, 0, 14)
+
+        coinStartViews.add(coin)
+        coinStartViews.add(start)
+        val shown = prefs.getBoolean(KEY_COIN_START, false)
+        for (v in coinStartViews) v.visibility = if (shown) View.VISIBLE else View.GONE
     }
+
+    /** Show/hide the COIN and START buttons (hidden by default, saved). Returns the new state. */
+    fun toggleCoinStart(): Boolean {
+        val show = !isCoinStartVisible()
+        for (v in coinStartViews) v.visibility = if (show) View.VISIBLE else View.GONE
+        prefs.edit().putBoolean(KEY_COIN_START, show).apply()
+        return show
+    }
+
+    fun isCoinStartVisible(): Boolean = coinStartViews.firstOrNull()?.visibility == View.VISIBLE
 
     // ------------------------------------------------------- play/pause + menu
 
