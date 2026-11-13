@@ -690,12 +690,21 @@ void AndroidInputSystem::HandleTouch(const SDL_TouchFingerEvent& tf, bool down)
   }
 
   // Virtual steering wheel (racing games): encoded in tf.x from Java and keyed by a fixed fingerId.
+  if (tf.fingerId == 1107 && !down && !UseVirtualWheel())
+  {
+    // Finger lifted while a gamepad is connected: still release the wheel.
+    m_wheelFingerActive = false;
+    m_wheelFinger = 0;
+    m_virtualJoyX.store(0, std::memory_order_relaxed);
+    m_virtualJoyY = 0;
+    return;
+  }
   if (UseVirtualWheel())
   {
     constexpr SDL_FingerID kWheelFingerId = 1107;
     if (down)
     {
-      if (!m_wheelFingerActive && tf.fingerId == kWheelFingerId)
+      if (tf.fingerId == kWheelFingerId)
       {
         m_wheelFingerActive = true;
         m_wheelFinger = tf.fingerId;
@@ -1145,6 +1154,13 @@ void AndroidInputSystem::CloseControllers()
 void AndroidInputSystem::RefreshControllers()
 {
   CloseControllers();
+
+  // A controller was plugged/unplugged: drop any in-flight touch-steering state so a finger-up
+  // that arrived while the pad was connected (and was ignored) cannot leave the wheel stuck.
+  m_wheelFingerActive = false;
+  m_wheelFinger = 0;
+  m_virtualJoyX.store(0, std::memory_order_relaxed);
+  m_virtualJoyY = 0;
 
   const int n = SDL_NumJoysticks();
   for (int i = 0; i < n; i++)
