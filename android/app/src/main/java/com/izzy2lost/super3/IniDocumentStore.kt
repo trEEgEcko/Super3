@@ -18,6 +18,20 @@ object IniDocumentStore {
         return created
     }
 
+    /** Rally build: Supermodel.ini lives in the app's own folder (no SAF tree). */
+    fun ensureInternalIniDocument(context: Context): DocumentFile? {
+        val ini = File(File(context.getExternalFilesDir(null), "super3/Config"), "Supermodel.ini")
+        if (!ini.exists()) {
+            ini.parentFile?.mkdirs()
+            runCatching {
+                context.assets.open("Config/Supermodel.ini").use { input ->
+                    ini.outputStream().use { out -> input.copyTo(out) }
+                }
+            }
+        }
+        return if (ini.isFile) DocumentFile.fromFile(ini) else null
+    }
+
     fun readIniText(context: Context, doc: DocumentFile): String? {
         return runCatching {
             val input = context.contentResolver.openInputStream(doc.uri) ?: return@runCatching null

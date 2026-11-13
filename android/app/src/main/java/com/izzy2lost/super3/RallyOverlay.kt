@@ -270,7 +270,7 @@ class RallyOverlay(
 
         place(gas, Gravity.BOTTOM or Gravity.END, 0, 0, 16, 16)
         place(brake, Gravity.BOTTOM or Gravity.END, 0, 0, 16 + 96 + 12, 16)
-        place(view, Gravity.BOTTOM or Gravity.END, 0, 0, 16, 16 + 96 + 10)
+        place(view, Gravity.CENTER_VERTICAL or Gravity.END, 0, 0, 16, 0)
     }
 
     // ---------------------------------------------------------------- coin/start
@@ -326,7 +326,7 @@ class RallyOverlay(
             FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT,
         )
-        place(row, Gravity.TOP or Gravity.END, 0, 84, 12, 0)
+        place(row, Gravity.TOP or Gravity.END, 0, 12, 12, 0)
     }
 
     // ------------------------------------------------------- service / test (hidden)
@@ -377,6 +377,6 @@ class RallyOverlay(
         )
         row.visibility = View.GONE
         operatorRow = row
-        place(row, Gravity.TOP or Gravity.START, 12, 84, 0, 0)
+        place(row, Gravity.TOP or Gravity.START, 12, 12, 0, 0)
     }
 }

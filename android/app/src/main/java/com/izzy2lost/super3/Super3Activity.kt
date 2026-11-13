@@ -58,6 +58,38 @@ class Super3Activity : SDLActivity() {
     private var exitDialogOpen = false
     private var userPaused = false
     private var rallyOverlay: RallyOverlay? = null
+
+    // 0 = Auto (hide touch controls while a gamepad is connected), 1 = always show, 2 = always hide
+    private var rallyControlsMode: Int = 0
+    private val inputDeviceListener =
+        object : android.hardware.input.InputManager.InputDeviceListener {
+            override fun onInputDeviceAdded(deviceId: Int) = applyRallyControlsMode()
+            override fun onInputDeviceRemoved(deviceId: Int) = applyRallyControlsMode()
+            override fun onInputDeviceChanged(deviceId: Int) = applyRallyControlsMode()
+        }
+
+    private fun gamepadConnected(): Boolean {
+        for (id in InputDevice.getDeviceIds()) {
+            val d = InputDevice.getDevice(id) ?: continue
+            if (d.isVirtual) continue
+            val src = d.sources
+            if ((src and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
+                (src and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
+            ) return true
+        }
+        return false
+    }
+
+    private fun applyRallyControlsMode() {
+        if (rallyOverlay == null) return
+        val show =
+            when (rallyControlsMode) {
+                1 -> true
+                2 -> false
+                else -> !gamepadConnected()
+            }
+        applyOverlayControlsEnabled(show, persist = false)
+    }
     private var saveStateSlot = 0
     private var capturingThumbnail = false
     private var gameName: String = ""
@@ -604,6 +636,8 @@ class Super3Activity : SDLActivity() {
                 val ro = RallyOverlay(it, overlay) { showQuickOptionsMenu() }
                 ro.attach()
                 rallyOverlay = ro
+                rallyControlsMode = prefs.getInt("rally_controls_mode", 0)
+                applyRallyControlsMode()
             }
         }
     }
@@ -750,9 +784,14 @@ class Super3Activity : SDLActivity() {
         applyImmersiveMode()
         gyroSteeringEnabled = prefs.getBoolean("gyro_steering_enabled", false)
         startGyroSteering()
+        (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager)
+            .registerInputDeviceListener(inputDeviceListener, mainHandler)
+        applyRallyControlsMode()
     }
 
     override fun onPause() {
+        (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager)
+            .unregisterInputDeviceListener(inputDeviceListener)
         stopGyroSteering()
         super.onPause()
     }
@@ -866,6 +905,31 @@ class Super3Activity : SDLActivity() {
                 dialog.dismiss()
                 mainHandler.post { rallyOverlay?.showOpacityDialog(rallyAct) }
             }
+
+            fun modeLabel() = "Touch controls: " +
+                when (rallyControlsMode) {
+                    1 -> "Always show"
+                    2 -> "Always hide"
+                    else -> "Auto (hide with gamepad)"
+                }
+            val btnMode = menuButton(modeLabel(), 4)
+            btnMode.setOnClickListener {
+                rallyControlsMode = (rallyControlsMode + 1) % 3
+                prefs.edit().putInt("rally_controls_mode", rallyControlsMode).apply()
+                applyRallyControlsMode()
+                btnMode.text = modeLabel()
+            }
+
+            val btnMapping = menuButton("Controller mapping (restart game to apply)", 5)
+            btnMapping.setOnClickListener {
+                dialog.dismiss()
+                val i = android.content.Intent(rallyAct, ControlsMappingActivity::class.java)
+                i.putExtra(ControlsMappingActivity.EXTRA_INTERNAL, true)
+                i.putExtra(ControlsMappingActivity.EXTRA_GAME_NAME, gameName)
+                i.putExtra(ControlsMappingActivity.EXTRA_GAME_TITLE, "Sega Rally 2")
+                startActivity(i)
+            }
+            btnTouchControls.visibility = View.GONE
         }
 
         btnSaveStates.setOnClickListener {

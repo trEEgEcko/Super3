@@ -29,6 +29,7 @@ class ControlsMappingActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_GAME_NAME = "com.izzy2lost.super3.extra.CONTROLS_GAME_NAME"
         const val EXTRA_GAME_TITLE = "com.izzy2lost.super3.extra.CONTROLS_GAME_TITLE"
+        const val EXTRA_INTERNAL = "com.izzy2lost.super3.extra.CONTROLS_INTERNAL"
 
         // Disables the hardwired controller Start/Back/Guide/D-pad shortcuts in the native input
         // system so only the mappings set here apply.
@@ -58,7 +59,8 @@ class ControlsMappingActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this) { finish() }
 
         val treeUri = intent.getStringExtra(IniEditorActivity.EXTRA_TREE_URI)?.let(Uri::parse)
-        if (treeUri == null) {
+        val internal = intent.getBooleanExtra(EXTRA_INTERNAL, false)
+        if (treeUri == null && !internal) {
             Toast.makeText(this, "Data folder not set", Toast.LENGTH_SHORT).show()
             finish()
             return
@@ -84,11 +86,13 @@ class ControlsMappingActivity : AppCompatActivity() {
         load(treeUri)
     }
 
-    private fun load(treeUri: Uri) {
+    private fun load(treeUri: Uri?) {
         setBusy(true, "Loading...")
         val game = gameName
         thread(name = "Super3ControlsLoad") {
-            val doc = IniDocumentStore.ensureIniDocument(this, treeUri)
+            val doc =
+                if (treeUri != null) IniDocumentStore.ensureIniDocument(this, treeUri)
+                else IniDocumentStore.ensureInternalIniDocument(this)
             val text = doc?.let { IniDocumentStore.readIniText(this, it) }
             val defaults =
                 runCatching {
