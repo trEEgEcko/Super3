@@ -860,6 +860,12 @@ class Super3Activity : SDLActivity() {
                 rallyOverlay?.toggleOperator()
                 dialog.dismiss()
             }
+
+            val btnOpacity = menuButton("Controls opacity", 3)
+            btnOpacity.setOnClickListener {
+                dialog.dismiss()
+                mainHandler.post { rallyOverlay?.showOpacityDialog(rallyAct) }
+            }
         }
 
         btnSaveStates.setOnClickListener {

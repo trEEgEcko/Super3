@@ -1,6 +1,8 @@
 package com.izzy2lost.super3
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -12,7 +14,9 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.SeekBar
 import android.widget.TextView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.libsdl.app.SDLActivity
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -44,12 +48,17 @@ class RallyOverlay(
         const val STEER_DEADZONE = 0.06f
         const val SHIFT_TRIGGER = 0.65f
         const val SHIFT_REARM = 0.30f
-        const val IDLE_ALPHA = 0.85f
-        const val PRESSED_ALPHA = 0.6f
+        const val DEFAULT_OPACITY = 0.85f
+        const val PREFS = "rally_overlay"
+        const val KEY_OPACITY = "opacity"
     }
 
     private val density = root.resources.displayMetrics.density
     private val handler = Handler(Looper.getMainLooper())
+    private val prefs = root.context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private var idleAlpha = prefs.getFloat(KEY_OPACITY, DEFAULT_OPACITY).coerceIn(0.2f, 1.0f)
+    private val pressedAlpha: Float get() = idleAlpha * 0.7f
+    private val faders = ArrayList<View>()
     private var shiftArmed = true
     private var operatorRow: LinearLayout? = null
 
@@ -72,7 +81,8 @@ class RallyOverlay(
         val id = root.resources.getIdentifier(name, "drawable", root.context.packageName)
         if (id != 0) iv.setImageResource(id) else iv.setImageDrawable(fallbackShape())
         iv.scaleType = ImageView.ScaleType.FIT_CENTER
-        iv.alpha = IDLE_ALPHA
+        iv.alpha = idleAlpha
+        faders.add(iv)
         iv.layoutParams = FrameLayout.LayoutParams(dp(wDp), dp(hDp))
         return iv
     }
@@ -89,11 +99,11 @@ class RallyOverlay(
         v.setOnTouchListener { view, ev ->
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    view.alpha = PRESSED_ALPHA
+                    view.alpha = pressedAlpha
                     touch(MotionEvent.ACTION_DOWN, finger, x, y)
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    view.alpha = IDLE_ALPHA
+                    view.alpha = idleAlpha
                     touch(MotionEvent.ACTION_UP, finger, x, y)
                 }
             }
@@ -121,6 +131,40 @@ class RallyOverlay(
     }
 
     fun isOperatorVisible(): Boolean = operatorRow?.visibility == View.VISIBLE
+
+    /** Overall opacity of all on-screen controls (0.2 .. 1.0). Saved between launches. */
+    fun setOpacity(value: Float) {
+        idleAlpha = value.coerceIn(0.2f, 1.0f)
+        for (v in faders) v.alpha = idleAlpha
+        prefs.edit().putFloat(KEY_OPACITY, idleAlpha).apply()
+    }
+
+    fun showOpacityDialog(activity: Activity) {
+        val bar = SeekBar(activity)
+        bar.max = 80
+        bar.progress = ((idleAlpha * 100f).toInt() - 20).coerceIn(0, 80)
+        bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                setOpacity((progress + 20) / 100f)
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        val pad = dp(24)
+        val box = FrameLayout(activity)
+        box.setPadding(pad, pad, pad, 0)
+        box.addView(bar)
+        MaterialAlertDialogBuilder(
+            activity,
+            com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog,
+        )
+            .setTitle("Controls opacity")
+            .setView(box)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
 
     // ---------------------------------------------------------------- joystick
 
@@ -198,8 +242,8 @@ class RallyOverlay(
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     if (active) {
                         active = false
-                        base.alpha = IDLE_ALPHA
-                        knob.alpha = IDLE_ALPHA
+                        base.alpha = idleAlpha
+                        knob.alpha = idleAlpha
                         knob.translationX = 0f
                         knob.translationY = 0f
                         shiftArmed = true
@@ -256,7 +300,8 @@ class RallyOverlay(
         iv.setImageResource(iconRes)
         iv.setColorFilter(Color.argb(230, 255, 255, 255))
         iv.setPadding(dp(10), dp(10), dp(10), dp(10))
-        iv.alpha = 0.7f
+        iv.alpha = idleAlpha
+        faders.add(iv)
         iv.setOnClickListener { onClick() }
         return iv
     }
@@ -300,7 +345,8 @@ class RallyOverlay(
         bg.setColor(Color.argb(140, 0, 0, 0))
         bg.setStroke(dp(2), Color.argb(200, 255, 255, 255))
         tv.background = bg
-        tv.alpha = IDLE_ALPHA
+        tv.alpha = idleAlpha
+        faders.add(tv)
         return tv
     }
 
