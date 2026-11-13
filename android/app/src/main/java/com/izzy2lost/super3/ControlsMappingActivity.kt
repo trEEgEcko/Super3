@@ -55,8 +55,8 @@ class ControlsMappingActivity : AppCompatActivity() {
         setContentView(R.layout.activity_controls)
 
         toolbar = findViewById(R.id.controls_toolbar)
-        toolbar.setNavigationOnClickListener { finish() }
-        onBackPressedDispatcher.addCallback(this) { finish() }
+        toolbar.setNavigationOnClickListener { exitWithPrompt() }
+        onBackPressedDispatcher.addCallback(this) { exitWithPrompt() }
 
         val treeUri = intent.getStringExtra(IniEditorActivity.EXTRA_TREE_URI)?.let(Uri::parse)
         val internal = intent.getBooleanExtra(EXTRA_INTERNAL, false)
@@ -70,7 +70,7 @@ class ControlsMappingActivity : AppCompatActivity() {
         val gameTitle = intent.getStringExtra(EXTRA_GAME_TITLE)
         toolbar.subtitle =
             (if (gameName == null) "All games" else (gameTitle ?: gameName)) +
-                " · saves automatically, restart game to apply"
+                " · saved automatically"
 
         toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -291,6 +291,21 @@ class ControlsMappingActivity : AppCompatActivity() {
         save(sets = sets, removes = removes, message = "Controls reset")
     }
 
+    private var changed = false
+
+    private fun exitWithPrompt() {
+        if (!changed) {
+            finish()
+            return
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Mapping saved")
+            .setMessage("Restart the game now to use the new controller mapping?")
+            .setPositiveButton("Restart now") { _, _ -> AppRestart.restart(this) }
+            .setNegativeButton("Later") { _, _ -> finish() }
+            .show()
+    }
+
     private fun save(
         sets: Map<String, String> = emptyMap(),
         removes: Set<String> = emptySet(),
@@ -299,18 +314,20 @@ class ControlsMappingActivity : AppCompatActivity() {
         if (busy) return
         val doc = iniDoc ?: return
         val updated = IniSections.update(iniLines, sectionName, sets, removes)
-        setBusy(true, "Saving...")
+        // Show the result immediately, then write to disk in the background.
+        val previous = iniLines
+        iniLines = updated
+        changed = true
+        refreshRows()
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         thread(name = "Super3ControlsSave") {
             val ok = IniDocumentStore.writeIniText(this, doc, updated.joinToString("\n"))
-            runOnUiThread {
-                setBusy(false, null)
-                if (!ok) {
+            if (!ok) {
+                runOnUiThread {
+                    iniLines = previous
+                    refreshRows()
                     Toast.makeText(this, "Failed to save Supermodel.ini", Toast.LENGTH_SHORT).show()
-                    return@runOnUiThread
                 }
-                iniLines = updated
-                refreshRows()
-                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
             }
         }
     }

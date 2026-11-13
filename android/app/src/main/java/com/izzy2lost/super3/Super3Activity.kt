@@ -936,8 +936,7 @@ class Super3Activity : SDLActivity() {
             val btnMapping = cell(row3, "Controller mapping", true)
             btnMapping.setOnClickListener {
                 dialog.dismiss()
-                Toast.makeText(rallyAct, "Restart the game after changing mapping", Toast.LENGTH_LONG).show()
-                val i = android.content.Intent(rallyAct, ControlsMappingActivity::class.java)
+                                val i = android.content.Intent(rallyAct, ControlsMappingActivity::class.java)
                 i.putExtra(ControlsMappingActivity.EXTRA_INTERNAL, true)
                 i.putExtra(ControlsMappingActivity.EXTRA_GAME_NAME, gameName)
                 i.putExtra(ControlsMappingActivity.EXTRA_GAME_TITLE, "Sega Rally 2")
@@ -957,12 +956,25 @@ class Super3Activity : SDLActivity() {
                 btnMode.text = modeLabel()
             }
 
+            // Row 4: save states + restart
+            val row4 = menuRow(4)
+            val btnStates = cell(row4, "Save states", true)
+            btnStates.setOnClickListener {
+                dialog.dismiss()
+                mainHandler.post { showSaveStateDialog() }
+            }
+            val btnRestart = cell(row4, "Restart game", false)
+            btnRestart.setOnClickListener {
+                dialog.dismiss()
+                AppRestart.restart(rallyAct)
+            }
+
             // Not used in this build.
             btnTouchControls.visibility = View.GONE
             btnGyroSteering.visibility = View.GONE
             btnDaytonaTiming.visibility = View.GONE
             dialogView.findViewById<View>(R.id.timing_note)?.visibility = View.GONE
-            btnSaveStates.visibility = View.GONE
+            btnSaveStates.visibility = View.GONE // replaced by the "Save states" cell above
             btnExitGame.layoutParams.height = dp(44)
         }
 
