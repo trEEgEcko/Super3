@@ -168,8 +168,8 @@ object RallyVideoSettings {
         perfTitle.setPadding(0, (12 * density).toInt(), 0, 0)
         box.addView(perfTitle)
 
-        val ppcValues = listOf(50, 40, 30)
-        val ppcLabels = listOf("CPU speed 50 (default)", "CPU speed 40 (faster)", "CPU speed 30 (fastest, may glitch)")
+        val ppcValues = listOf(50, 40)
+        val ppcLabels = listOf("CPU speed 50 (default)", "CPU speed 40 (faster)")
         val curPpc = readValue(ini, "PowerPCFrequency")?.toIntOrNull() ?: 50
         val ppcGroup = RadioGroup(activity)
         val ppcRadios = ArrayList<RadioButton>()
