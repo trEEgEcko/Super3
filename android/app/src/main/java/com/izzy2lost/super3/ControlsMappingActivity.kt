@@ -68,7 +68,9 @@ class ControlsMappingActivity : AppCompatActivity() {
 
         gameName = intent.getStringExtra(EXTRA_GAME_NAME)?.takeIf { it.isNotBlank() }
         val gameTitle = intent.getStringExtra(EXTRA_GAME_TITLE)
-        toolbar.subtitle = if (gameName == null) "All games" else (gameTitle ?: gameName)
+        toolbar.subtitle =
+            (if (gameName == null) "All games" else (gameTitle ?: gameName)) +
+                " · saves automatically, restart game to apply"
 
         toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {

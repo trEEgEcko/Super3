@@ -88,7 +88,9 @@ class Super3Activity : SDLActivity() {
                 2 -> false
                 else -> !gamepadConnected()
             }
-        applyOverlayControlsEnabled(show, persist = false)
+        // Pause/menu buttons always stay; only the gameplay touch controls hide.
+        applyOverlayControlsEnabled(true, persist = false)
+        rallyOverlay?.setTouchControlsVisible(show)
     }
     private var saveStateSlot = 0
     private var capturingThumbnail = false

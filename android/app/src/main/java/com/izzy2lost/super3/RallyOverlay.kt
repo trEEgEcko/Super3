@@ -63,6 +63,7 @@ class RallyOverlay(
     private var shiftArmed = true
     private var operatorRow: LinearLayout? = null
     private val coinStartViews = ArrayList<View>()
+    private val touchViews = ArrayList<View>() // joystick, gas, brake, view
 
     private fun dp(v: Int): Int = (v * density + 0.5f).toInt()
 
@@ -123,6 +124,11 @@ class RallyOverlay(
         addCoinStart()
         addTopButtons()
         addOperatorButtons()
+    }
+
+    /** Show/hide the gameplay touch controls (stick, gas, brake, view). Pause/menu stay visible. */
+    fun setTouchControlsVisible(visible: Boolean) {
+        for (v in touchViews) v.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
     /** Show/hide the arcade SERVICE and TEST buttons (hidden by default). Returns the new state. */
@@ -257,6 +263,7 @@ class RallyOverlay(
         }
 
         place(box, Gravity.BOTTOM or Gravity.START, 20, 0, 0, 12)
+        touchViews.add(box)
     }
 
     // ------------------------------------------------------- gas / brake / view
@@ -273,6 +280,9 @@ class RallyOverlay(
         place(gas, Gravity.BOTTOM or Gravity.END, 0, 0, 16, 16)
         place(brake, Gravity.BOTTOM or Gravity.END, 0, 0, 16 + 96 + 12, 16)
         place(view, Gravity.CENTER_VERTICAL or Gravity.END, 0, 0, 16, 0)
+        touchViews.add(gas)
+        touchViews.add(brake)
+        touchViews.add(view)
     }
 
     // ---------------------------------------------------------------- coin/start
