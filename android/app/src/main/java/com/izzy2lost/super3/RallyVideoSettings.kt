@@ -11,6 +11,8 @@ import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
+import android.widget.ScrollView
+import android.widget.TextView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
 import kotlin.math.max
@@ -160,12 +162,42 @@ object RallyVideoSettings {
         cb3d.isChecked = readValue(ini, "New3DEngine")?.let { isTrue(it) } ?: true
         box.addView(cb3d)
 
+        // Performance: emulated CPU speed (lower = faster, but may cause glitches) + GPU thread.
+        val perfTitle = TextView(activity)
+        perfTitle.text = "Performance (if the game lags)"
+        perfTitle.setPadding(0, (12 * density).toInt(), 0, 0)
+        box.addView(perfTitle)
+
+        val ppcValues = listOf(50, 40, 30)
+        val ppcLabels = listOf("CPU speed 50 (default)", "CPU speed 40 (faster)", "CPU speed 30 (fastest, may glitch)")
+        val curPpc = readValue(ini, "PowerPCFrequency")?.toIntOrNull() ?: 50
+        val ppcGroup = RadioGroup(activity)
+        val ppcRadios = ArrayList<RadioButton>()
+        val ppcChecked = ppcValues.minByOrNull { kotlin.math.abs(it - curPpc) }
+        for (i in ppcValues.indices) {
+            val rb = RadioButton(activity)
+            rb.id = View.generateViewId()
+            rb.text = ppcLabels[i]
+            rb.isChecked = ppcValues[i] == ppcChecked
+            ppcGroup.addView(rb)
+            ppcRadios.add(rb)
+        }
+        box.addView(ppcGroup)
+
+        val cbGpuMt = CheckBox(activity)
+        cbGpuMt.text = "GPU multi-threading"
+        cbGpuMt.isChecked = isTrue(readValue(ini, "GPUMultiThreaded"))
+        box.addView(cbGpuMt)
+
+        val scroll = ScrollView(activity)
+        scroll.addView(box)
+
         MaterialAlertDialogBuilder(
             activity,
             com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog,
         )
             .setTitle("Video settings")
-            .setView(box)
+            .setView(scroll)
             .setPositiveButton("Apply & restart") { _, _ ->
                 val updates = LinkedHashMap<String, String>()
                 val selected = radios.indexOfFirst { it.isChecked }
@@ -176,8 +208,11 @@ object RallyVideoSettings {
                 updates["WideScreen"] = if (cbWide.isChecked) "1" else "0"
                 updates["WideBackground"] = if (cbBg.isChecked) "1" else "0"
                 updates["New3DEngine"] = if (cb3d.isChecked) "1" else "0"
+                val ppcSel = ppcRadios.indexOfFirst { it.isChecked }
+                if (ppcSel >= 0) updates["PowerPCFrequency"] = ppcValues[ppcSel].toString()
+                updates["GPUMultiThreaded"] = if (cbGpuMt.isChecked) "1" else "0"
                 writeValues(ini, updates)
-                restartApp(activity)
+                AppRestart.restart(activity)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
