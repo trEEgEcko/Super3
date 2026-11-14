@@ -18,6 +18,16 @@ val hasReleaseKeystore = hasKeystoreProperties &&
     !keystoreProperties.getProperty(it).isNullOrBlank()
   }
 
+// Pick the game with -Pgame=daytona2 | scudplusa | srally2 (default srally2).
+val gameId = (project.findProperty("game") as String?) ?: "srally2"
+val gameTable = mapOf(
+  // id        to (title,            ROM zips needed, parent first is fine)
+  "srally2"   to Pair("Sega Rally 2",   "srally2"),
+  "daytona2"  to Pair("Daytona USA 2",  "daytona2"),
+  "scudplusa" to Pair("Scud Race Plus", "scudplusa,scud"),
+)
+val gameInfo = gameTable[gameId] ?: error("Unknown game '$gameId'. Use: ${gameTable.keys}")
+
 android {
   namespace = "com.izzy2lost.super3"
   compileSdk = 36
@@ -25,7 +35,11 @@ android {
   ndkVersion = "29.0.14206865"
 
   defaultConfig {
-    applicationId = "com.treegecko.srally2"
+    applicationId = "com.treegecko.$gameId"
+    manifestPlaceholders["appLabel"] = gameInfo.first
+    buildConfigField("String", "GAME_NAME", "\"$gameId\"")
+    buildConfigField("String", "GAME_TITLE", "\"${gameInfo.first}\"")
+    buildConfigField("String", "ROM_FILES", "\"${gameInfo.second}\"")
     minSdk = 26
     targetSdk = 36
 
@@ -41,6 +55,13 @@ android {
         cppFlags += listOf("-std=c++17", "-fexceptions", "-frtti")
       }
     }
+  }
+
+  // Per-game launcher icons live in src/icons/<game>/res (release overrides main).
+  sourceSets.getByName("release").res.srcDir("src/icons/$gameId/res")
+
+  buildFeatures {
+    buildConfig = true
   }
 
   signingConfigs {
