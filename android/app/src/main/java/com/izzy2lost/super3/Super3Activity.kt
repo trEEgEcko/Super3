@@ -969,16 +969,6 @@ class Super3Activity : SDLActivity() {
                 AppRestart.restart(rallyAct)
             }
 
-            // Row 5: hand brake mode (hold / toggle)
-            val row5 = menuRow(5)
-            fun hbLabel() =
-                "Hand brake: " + if (rallyOverlay?.isHandbrakeToggle() == true) "Toggle" else "Hold"
-            val btnHb = cell(row5, hbLabel(), true)
-            btnHb.setOnClickListener {
-                rallyOverlay?.toggleHandbrakeMode()
-                btnHb.text = hbLabel()
-            }
-
             // Not used in this build.
             btnTouchControls.visibility = View.GONE
             btnGyroSteering.visibility = View.GONE

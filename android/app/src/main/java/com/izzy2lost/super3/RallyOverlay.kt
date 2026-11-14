@@ -44,7 +44,6 @@ class RallyOverlay(
         const val F_SERVICE = 1105
         const val F_TEST = 1106
         const val F_VIEW = 1152
-        const val F_HANDBRAKE = 1157
 
         const val STEER_DEADZONE = 0.06f
         const val SHIFT_TRIGGER = 0.65f
@@ -53,7 +52,6 @@ class RallyOverlay(
         const val PREFS = "rally_overlay"
         const val KEY_OPACITY = "opacity"
         const val KEY_COIN_START = "coin_start_visible"
-        const val KEY_HB_TOGGLE = "handbrake_toggle"
     }
 
     private val density = root.resources.displayMetrics.density
@@ -66,8 +64,6 @@ class RallyOverlay(
     private var operatorRow: LinearLayout? = null
     private val coinStartViews = ArrayList<View>()
     private val touchViews = ArrayList<View>() // joystick, gas, brake, view
-    private var handbrakeLatched = false
-    private var handbrakeView: View? = null
 
     private fun dp(v: Int): Int = (v * density + 0.5f).toInt()
 
@@ -116,50 +112,6 @@ class RallyOverlay(
             }
             true
         }
-    }
-
-    /** Hand brake: hold while pressed, or (toggle mode) tap once to latch on, tap again to release. */
-    @SuppressLint("ClickableViewAccessibility")
-    private fun bindHandbrake(v: View) {
-        v.setOnTouchListener { view, ev ->
-            val toggle = prefs.getBoolean(KEY_HB_TOGGLE, false)
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    if (toggle) {
-                        handbrakeLatched = !handbrakeLatched
-                        view.alpha = if (handbrakeLatched) 1.0f else idleAlpha
-                        touch(
-                            if (handbrakeLatched) MotionEvent.ACTION_DOWN else MotionEvent.ACTION_UP,
-                            F_HANDBRAKE, 0.70f, 0.80f,
-                        )
-                    } else {
-                        view.alpha = pressedAlpha
-                        touch(MotionEvent.ACTION_DOWN, F_HANDBRAKE, 0.70f, 0.80f)
-                    }
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (!toggle) {
-                        view.alpha = idleAlpha
-                        touch(MotionEvent.ACTION_UP, F_HANDBRAKE, 0.70f, 0.80f)
-                    }
-                }
-            }
-            true
-        }
-    }
-
-    fun isHandbrakeToggle(): Boolean = prefs.getBoolean(KEY_HB_TOGGLE, false)
-
-    /** Switch hand brake between hold and toggle mode (releases it if it was latched). */
-    fun toggleHandbrakeMode(): Boolean {
-        val toggle = !isHandbrakeToggle()
-        if (handbrakeLatched) {
-            handbrakeLatched = false
-            touch(MotionEvent.ACTION_UP, F_HANDBRAKE, 0.70f, 0.80f)
-        }
-        handbrakeView?.alpha = idleAlpha
-        prefs.edit().putBoolean(KEY_HB_TOGGLE, toggle).apply()
-        return toggle
     }
 
     fun attach() {
@@ -320,22 +272,17 @@ class RallyOverlay(
         val gas = makeImage("btn_gas", 96, 96)
         val brake = makeImage("btn_brake", 96, 96)
         val view = makeImage("btn_view", 96, 54)
-        val handbrake = makeImage("btn_handbrake", 96, 96)
 
         bindPress(gas, F_GAS, 0.85f, 0.35f)
         bindPress(brake, F_BRAKE, 0.85f, 0.80f)
         bindPress(view, F_VIEW, 0.90f, 0.50f)
-        handbrakeView = handbrake
-        bindHandbrake(handbrake)
 
         place(gas, Gravity.BOTTOM or Gravity.END, 0, 0, 16, 16)
         place(brake, Gravity.BOTTOM or Gravity.END, 0, 0, 16 + 96 + 12, 16)
         place(view, Gravity.CENTER_VERTICAL or Gravity.END, 0, 0, 16, 0)
-        place(handbrake, Gravity.BOTTOM or Gravity.END, 0, 0, 16 + (96 + 12) * 2, 16)
         touchViews.add(gas)
         touchViews.add(brake)
         touchViews.add(view)
-        touchViews.add(handbrake)
     }
 
     // ---------------------------------------------------------------- coin/start
