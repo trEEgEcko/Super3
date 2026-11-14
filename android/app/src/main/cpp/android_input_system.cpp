@@ -252,6 +252,7 @@ void AndroidInputSystem::ApplyConfig(const Util::Config::Node& config)
   m_touchShiftN.a = keySc(get("InputGearShiftN", "KEY_6"), SDL_SCANCODE_6);
 
   m_touchViewChange.a = keySc(get("InputViewChange", "KEY_A"), SDL_SCANCODE_A);
+  m_touchHandBrake.a = keySc(get("InputHandBrake", "KEY_S"), SDL_SCANCODE_S);
   m_touchVr1.a = keySc(get("InputVR1", "KEY_A"), SDL_SCANCODE_A);
   m_touchVr2.a = keySc(get("InputVR2", "KEY_S"), SDL_SCANCODE_S);
   m_touchVr3.a = keySc(get("InputVR3", "KEY_D"), SDL_SCANCODE_D);
@@ -507,6 +508,7 @@ void AndroidInputSystem::HandleTouch(const SDL_TouchFingerEvent& tf, bool down)
 
     case 1152: SetKeys(m_touchViewChange, down); return;
     case 1153: SetKeys(m_touchVr1, down); return;
+    case 1157: SetKeys(m_touchHandBrake, down); return; // Hand brake (touch overlay)
     case 1154: SetKeys(m_touchVr2, down); return;
     case 1155: SetKeys(m_touchVr3, down); return;
     case 1156: SetKeys(m_touchVr4, down); return;

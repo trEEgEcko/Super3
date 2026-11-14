@@ -145,6 +145,7 @@ private:
   DualScancode m_touchShiftN{SDL_SCANCODE_6, SDL_SCANCODE_UNKNOWN};
 
   DualScancode m_touchViewChange{SDL_SCANCODE_A, SDL_SCANCODE_UNKNOWN};
+  DualScancode m_touchHandBrake{SDL_SCANCODE_S, SDL_SCANCODE_UNKNOWN};
   DualScancode m_touchVr1{SDL_SCANCODE_A, SDL_SCANCODE_UNKNOWN};
   DualScancode m_touchVr2{SDL_SCANCODE_S, SDL_SCANCODE_UNKNOWN};
   DualScancode m_touchVr3{SDL_SCANCODE_D, SDL_SCANCODE_UNKNOWN};

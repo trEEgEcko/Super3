@@ -506,6 +506,7 @@ struct Super3Host {
     // Racing view buttons.
     ensureKeyboardFallback("InputViewChange", "KEY_A");
     ensureKeyboardFallback("InputVR1", "KEY_A");
+    ensureKeyboardFallback("InputHandBrake", "KEY_S");
     ensureKeyboardFallback("InputVR2", "KEY_S");
     ensureKeyboardFallback("InputVR3", "KEY_D");
     ensureKeyboardFallback("InputVR4", "KEY_F");
