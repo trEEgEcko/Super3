@@ -418,8 +418,9 @@ struct Super3Host {
     config.Set("Outputs", "none");
     config.Set("ForceFeedback", false);
 
-    // Ensure required nodes exist / sane.
-    config.Set("PowerPCFrequency", "50");
+    // Ensure the node exists, but keep the user's value from Supermodel.ini (CPU speed option).
+    if (config.TryGet("PowerPCFrequency") == nullptr)
+      config.Set("PowerPCFrequency", "50");
 
     // Keep unsupported rendering knobs clamped on Android.
     config.Set("QuadRendering", false);
