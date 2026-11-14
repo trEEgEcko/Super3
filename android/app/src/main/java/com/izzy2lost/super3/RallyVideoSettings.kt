@@ -25,7 +25,7 @@ import kotlin.math.min
  */
 object RallyVideoSettings {
     private const val PREFS = "rally_video"
-    private const val KEY_DEFAULTS_APPLIED = "defaults_applied_v1"
+    private const val KEY_DEFAULTS_APPLIED = "defaults_applied_v2"
 
     private fun userRoot(ctx: Context): File = File(ctx.getExternalFilesDir(null), "super3")
 
@@ -70,6 +70,11 @@ object RallyVideoSettings {
 
     private fun isTrue(v: String?): Boolean = v == "1" || v.equals("true", ignoreCase = true)
 
+    private val VIDEO_KEYS = setOf(
+        "XResolution", "YResolution", "WideScreen", "WideBackground",
+        "New3DEngine", "PowerPCFrequency", "GPUMultiThreaded",
+    )
+
     private fun writeValues(file: File, updates: Map<String, String>) {
         val lines = if (file.exists()) file.readLines().toMutableList() else mutableListOf()
         if (globalRange(lines) == null) {
@@ -79,9 +84,10 @@ object RallyVideoSettings {
         for ((k, v) in updates) {
             val r = globalRange(lines) ?: continue
             val re = Regex("^\\s*" + Regex.escape(k) + "\\s*=")
-            val idx = r.firstOrNull { re.containsMatchIn(lines[it]) }
-            if (idx != null) {
-                lines[idx] = "$k = $v"
+            // Replace every occurrence (the core keeps the last one if a key is duplicated).
+            val hits = r.filter { re.containsMatchIn(lines[it]) }
+            if (hits.isNotEmpty()) {
+                for (i in hits) lines[i] = "$k = $v"
             } else {
                 var pos = r.first
                 for (i in r) {
@@ -90,22 +96,37 @@ object RallyVideoSettings {
                 lines.add(pos, "$k = $v")
             }
         }
+        // A per-game section overrides Global: update video keys already present there too.
+        var inGame = false
+        for (i in lines.indices) {
+            val line = lines[i]
+            if (isHeader(line)) {
+                val name = line.trim().removePrefix("[").removeSuffix("]").trim()
+                inGame = !name.equals("global", ignoreCase = true)
+                continue
+            }
+            if (!inGame) continue
+            for ((k, v) in updates) {
+                if (k in VIDEO_KEYS && Regex("^\\s*" + Regex.escape(k) + "\\s*=").containsMatchIn(line)) {
+                    lines[i] = "$k = $v"
+                }
+            }
+        }
         file.parentFile?.mkdirs()
         file.writeText(lines.joinToString("\n") + "\n")
     }
 
-    /** First launch after install/update: fill the screen (widescreen, half device resolution). */
+    /** First launch after install/update: classic Native 4:3 (496x384), no widescreen. */
     fun applyFirstRunDefaults(ctx: Context) {
         val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_DEFAULTS_APPLIED, false)) return
-        val dev = deviceRes(ctx)
         writeValues(
             iniFile(ctx),
             mapOf(
-                "XResolution" to (dev.first / 2).toString(),
-                "YResolution" to (dev.second / 2).toString(),
-                "WideScreen" to "1",
-                "WideBackground" to "1",
+                "XResolution" to "496",
+                "YResolution" to "384",
+                "WideScreen" to "0",
+                "WideBackground" to "0",
                 "New3DEngine" to "1",
             ),
         )
