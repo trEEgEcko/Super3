@@ -44,6 +44,7 @@ class RallyOverlay(
         const val F_SERVICE = 1105
         const val F_TEST = 1106
         const val F_VIEW = 1152
+        const val F_HANDBRAKE = 1157
 
         const val STEER_DEADZONE = 0.06f
         const val SHIFT_TRIGGER = 0.65f
@@ -272,17 +273,21 @@ class RallyOverlay(
         val gas = makeImage("btn_gas", 96, 96)
         val brake = makeImage("btn_brake", 96, 96)
         val view = makeImage("btn_view", 96, 54)
+        val handbrake = makeImage("btn_handbrake", 96, 96)
 
         bindPress(gas, F_GAS, 0.85f, 0.35f)
         bindPress(brake, F_BRAKE, 0.85f, 0.80f)
         bindPress(view, F_VIEW, 0.90f, 0.50f)
+        bindPress(handbrake, F_HANDBRAKE, 0.70f, 0.80f)
 
         place(gas, Gravity.BOTTOM or Gravity.END, 0, 0, 16, 16)
         place(brake, Gravity.BOTTOM or Gravity.END, 0, 0, 16 + 96 + 12, 16)
         place(view, Gravity.CENTER_VERTICAL or Gravity.END, 0, 0, 16, 0)
+        place(handbrake, Gravity.BOTTOM or Gravity.END, 0, 0, 16 + (96 + 12) * 2, 16)
         touchViews.add(gas)
         touchViews.add(brake)
         touchViews.add(view)
+        touchViews.add(handbrake)
     }
 
     // ---------------------------------------------------------------- coin/start
