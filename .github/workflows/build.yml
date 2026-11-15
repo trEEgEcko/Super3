@@ -2,10 +2,38 @@ name: Build APK
 
 on:
   workflow_dispatch:
+    inputs:
+      game:
+        description: "Game to build"
+        type: choice
+        default: all
+        options:
+          - all
+          - srally2
+          - daytona2
+          - scudplusa
 
 jobs:
-  build:
+  prep:
     runs-on: ubuntu-24.04
+    outputs:
+      games: ${{ steps.m.outputs.games }}
+    steps:
+      - id: m
+        run: |
+          if [ "${{ inputs.game }}" = "all" ]; then
+            echo 'games=["srally2","daytona2","scudplusa"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'games=["${{ inputs.game }}"]' >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: prep
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.prep.outputs.games) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +53,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease -Pgame=${{ matrix.game }} --no-daemon
 
       - name: Restore signing key
         id: ks
@@ -49,9 +77,9 @@ jobs:
           "$BT/zipalign" -f -p 4 "$IN" /tmp/aligned.apk
           "$BT/apksigner" sign --ks "$HOME/rally-ks/release.jks" \
             --ks-pass pass:rallypass --key-pass pass:rallypass \
-            --out SegaRally2.apk /tmp/aligned.apk
+            --out ${{ matrix.game }}.apk /tmp/aligned.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: SegaRally2-apk
-          path: SegaRally2.apk
+          name: ${{ matrix.game }}-apk
+          path: ${{ matrix.game }}.apk
