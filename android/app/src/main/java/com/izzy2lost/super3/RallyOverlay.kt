@@ -33,6 +33,7 @@ class RallyOverlay(
     private val root: FrameLayout,
     private val overlay: View,
     private val onMenu: () -> Unit,
+    private val hasVr4: Boolean = false,
 ) {
     private companion object {
         const val F_COIN = 1101
@@ -108,6 +109,28 @@ class RallyOverlay(
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     view.alpha = idleAlpha
                     touch(MotionEvent.ACTION_UP, finger, x, y)
+                }
+            }
+            true
+        }
+    }
+
+    /** VR1..VR4 games (Daytona 2, Scud Race): each tap selects the next view (fingers 1153..1156). */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun bindVrCycle(v: View, x: Float, y: Float) {
+        var index = 0
+        var active = 1153
+        v.setOnTouchListener { view, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    active = 1153 + index
+                    index = (index + 1) % 4
+                    view.alpha = pressedAlpha
+                    touch(MotionEvent.ACTION_DOWN, active, x, y)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    view.alpha = idleAlpha
+                    touch(MotionEvent.ACTION_UP, active, x, y)
                 }
             }
             true
@@ -275,7 +298,7 @@ class RallyOverlay(
 
         bindPress(gas, F_GAS, 0.85f, 0.35f)
         bindPress(brake, F_BRAKE, 0.85f, 0.80f)
-        bindPress(view, F_VIEW, 0.90f, 0.50f)
+        if (hasVr4) bindVrCycle(view, 0.90f, 0.50f) else bindPress(view, F_VIEW, 0.90f, 0.50f)
 
         place(gas, Gravity.BOTTOM or Gravity.END, 0, 0, 16, 16)
         place(brake, Gravity.BOTTOM or Gravity.END, 0, 0, 16 + 96 + 12, 16)

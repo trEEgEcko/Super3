@@ -12,20 +12,22 @@ import java.io.File
 import kotlin.concurrent.thread
 
 /**
- * Standalone entry point: skips the game list and boots Sega Rally 2 directly.
- * First launch asks for srally2.zip once, copies it into app storage, then
- * every later launch goes straight into the game.
+ * Standalone entry point: skips the game list and boots the game this APK was built for
+ * (BuildConfig.GAME_NAME). First launch asks for the ROM zip(s) once (parent sets included,
+ * e.g. scudplusa.zip + scud.zip), copies them into app storage, then every later launch
+ * goes straight into the game.
  */
 class RallyLauncherActivity : AppCompatActivity() {
-    private val gameName = "srally2"
+    private val gameName = BuildConfig.GAME_NAME
+    private val romNames = BuildConfig.ROM_FILES.split(",").map { it.trim() + ".zip" }
     private lateinit var status: TextView
 
     private val pickRom =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            if (uri == null) {
-                status.text = "No ROM selected.\n\nTap here to choose $gameName.zip"
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
+            if (uris.isEmpty()) {
+                status.text = "No ROM selected.\n\nTap here to choose ${missing().joinToString(" + ")}"
             } else {
-                importRom(uri)
+                importRoms(uris)
             }
         }
 
@@ -43,8 +45,7 @@ class RallyLauncherActivity : AppCompatActivity() {
         }
         setContentView(status)
 
-        val rom = romFile()
-        if (rom.isFile && rom.length() > 0L) {
+        if (missing().isEmpty()) {
             launchGame()
         } else {
             chooseRom()
@@ -53,40 +54,53 @@ class RallyLauncherActivity : AppCompatActivity() {
 
     private fun userRoot(): File = File(getExternalFilesDir(null), "super3")
 
-    private fun romFile(): File = File(File(userRoot(), "romcache"), "$gameName.zip")
+    private fun romDir(): File = File(userRoot(), "romcache")
+
+    private fun romFile(): File = File(romDir(), "$gameName.zip")
+
+    private fun missing(): List<String> =
+        romNames.filter { n -> File(romDir(), n).let { !(it.isFile && it.length() > 0L) } }
 
     private fun chooseRom() {
-        status.text = "Select your $gameName.zip"
+        status.text = "Select your ${missing().joinToString(" + ")}\n\n(you can pick several files at once)"
         pickRom.launch(arrayOf("*/*"))
     }
 
-    private fun importRom(uri: Uri) {
-        status.text = "Copying $gameName.zip..."
+    private fun displayName(uri: Uri): String? =
+        contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+
+    private fun importRoms(uris: List<Uri>) {
+        status.text = "Copying ROM files..."
         thread(name = "RallyRomImport") {
-            val out = romFile()
-            val tmp = File(out.parentFile, "$gameName.zip.tmp")
-            val ok = runCatching {
-                out.parentFile?.mkdirs()
-                contentResolver.openInputStream(uri)!!.use { input ->
-                    tmp.outputStream().use { output -> input.copyTo(output) }
-                }
-                if (out.exists()) out.delete()
-                tmp.renameTo(out)
-            }.getOrDefault(false)
+            romDir().mkdirs()
+            for (uri in uris) {
+                val name = runCatching { displayName(uri) }.getOrNull()?.lowercase() ?: continue
+                if (name !in romNames) continue
+                val out = File(romDir(), name)
+                val tmp = File(romDir(), "$name.tmp")
+                runCatching {
+                    contentResolver.openInputStream(uri)!!.use { input ->
+                        tmp.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    if (out.exists()) out.delete()
+                    tmp.renameTo(out)
+                }.onFailure { tmp.delete() }
+            }
 
             runOnUiThread {
-                if (ok && out.isFile && out.length() > 0L) {
+                val left = missing()
+                if (left.isEmpty()) {
                     launchGame()
                 } else {
-                    tmp.delete()
-                    status.text = "Failed to copy the ROM.\n\nTap here to try again"
+                    status.text = "Still missing: ${left.joinToString(" + ")}\n\nTap here to choose"
                 }
             }
         }
     }
 
     private fun launchGame() {
-        status.text = "Starting Sega Rally 2..."
+        status.text = "Starting ${BuildConfig.GAME_TITLE}..."
         thread(name = "RallyPrep") {
             val root = userRoot()
             AssetInstaller.ensureInstalled(this, root)

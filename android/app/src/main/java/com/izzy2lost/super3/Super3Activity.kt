@@ -635,7 +635,7 @@ class Super3Activity : SDLActivity() {
         // Sega Rally 2 build: custom overlay (analog stick, pedals, coin/start, pause + menu).
         if (isRacing) {
             (overlay.findViewById<View>(R.id.overlay_controls_root) as? FrameLayout)?.let {
-                val ro = RallyOverlay(it, overlay) { showQuickOptionsMenu() }
+                val ro = RallyOverlay(it, overlay, { showQuickOptionsMenu() }, hasVr4)
                 ro.attach()
                 rallyOverlay = ro
                 rallyControlsMode = prefs.getInt("rally_controls_mode", 0)
