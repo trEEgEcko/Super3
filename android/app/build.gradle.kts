@@ -18,13 +18,14 @@ val hasReleaseKeystore = hasKeystoreProperties &&
     !keystoreProperties.getProperty(it).isNullOrBlank()
   }
 
-// Pick the game with -Pgame=daytona2 | scudplusa | srally2 (default srally2).
+// Pick the game with -Pgame=daytona2 | scudplusa | srally2 | swtrilgy (default srally2).
 val gameId = (project.findProperty("game") as String?) ?: "srally2"
 val gameTable = mapOf(
   // id        to (title,            ROM zips needed, parent first is fine)
   "srally2"   to Pair("Sega Rally 2",   "srally2"),
   "daytona2"  to Pair("Daytona USA 2",  "daytona2"),
   "scudplusa" to Pair("Scud Race Plus", "scudplusa,scud"),
+  "swtrilgy"  to Pair("Star Wars Trilogy", "swtrilgy"),
 )
 val gameInfo = gameTable[gameId] ?: error("Unknown game '$gameId'. Use: ${gameTable.keys}")
 
