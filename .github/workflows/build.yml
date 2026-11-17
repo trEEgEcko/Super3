@@ -12,6 +12,7 @@ on:
           - srally2
           - daytona2
           - scudplusa
+          - swtrilgy
 
 jobs:
   prep:
@@ -22,7 +23,7 @@ jobs:
       - id: m
         run: |
           if [ "${{ inputs.game }}" = "all" ]; then
-            echo 'games=["srally2","daytona2","scudplusa"]' >> "$GITHUB_OUTPUT"
+            echo 'games=["srally2","daytona2","scudplusa","swtrilgy"]' >> "$GITHUB_OUTPUT"
           else
             echo 'games=["${{ inputs.game }}"]' >> "$GITHUB_OUTPUT"
           fi
