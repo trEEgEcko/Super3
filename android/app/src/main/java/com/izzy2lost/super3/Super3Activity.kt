@@ -58,6 +58,12 @@ class Super3Activity : SDLActivity() {
     private var exitDialogOpen = false
     private var userPaused = false
     private var rallyOverlay: RallyOverlay? = null
+    // Star Wars Trilogy overlay toggles (RallyOverlay only exists for racing games).
+    private var swtOverlay: Boolean = false
+    private var swtCoinStartVisible: Boolean = true
+    private var swtOperatorVisible: Boolean = false
+    private var swtStickMode: Boolean = false
+    private var swtAutoFire: Boolean = false
 
     // 0 = Auto (hide touch controls while a gamepad is connected), 1 = always show, 2 = always hide
     private var rallyControlsMode: Int = 0
@@ -261,7 +267,7 @@ class Super3Activity : SDLActivity() {
         val showFightButtons = isFighting || isSpikeout || isSoccer || isTwinJoysticks || isFishing || isSki
         // Star Wars Trilogy: tap anywhere on screen to aim+fire, so no aim pad.
         val showAimPad = (isGunGame || needsAimStickAndButtons) && !isStarWars
-        val showFightStick = (showFightButtons || isMagTruck) && !showAimPad
+        val showFightStick = ((showFightButtons || isMagTruck) && !showAimPad) || isStarWars
         val showExtraButtons = showFightButtons || needsAimStickAndButtons
 
         val shifterEnabled = getSharedPreferences("super3_prefs", MODE_PRIVATE)
@@ -420,10 +426,16 @@ class Super3Activity : SDLActivity() {
             if (isStarWars) {
                 // Single torpedo button (Trigger 2 / KEY_D); hide the unused E/G/K/P set.
                 overlay.findViewById<MaterialButton>(R.id.overlay_fight_punch)?.text = "T"
-                overlay.findViewById<View>(R.id.overlay_fight_kick)?.visibility = View.GONE
-                overlay.findViewById<View>(R.id.overlay_fight_guard)?.visibility = View.GONE
                 overlay.findViewById<View>(R.id.overlay_fight_escape)?.visibility = View.GONE
+                // Fire button (Trigger 1) for stick mode.
+                (overlay.findViewById<View>(R.id.overlay_fight_guard) as? android.widget.TextView)?.text = "F"
+                overlay.findViewById<View>(R.id.overlay_fight_guard)?.visibility = View.VISIBLE
+                bindHeld(R.id.overlay_fight_guard, fingerId = 1162, x = 0.90f, y = 0.45f)
                 bindHeld(R.id.overlay_fight_punch, fingerId = 1160, x = 0.90f, y = 0.55f)
+                // Event button (AnalogJoyEvent): skips cinematics / duel scenes.
+                (overlay.findViewById<View>(R.id.overlay_fight_kick) as? android.widget.TextView)?.text = "E"
+                overlay.findViewById<View>(R.id.overlay_fight_kick)?.visibility = View.VISIBLE
+                bindHeld(R.id.overlay_fight_kick, fingerId = 1161, x = 0.82f, y = 0.65f)
             } else {
                 bindHeld(R.id.overlay_fight_punch, fingerId = baseId + 0, x = 0.90f, y = 0.55f)
                 bindHeld(R.id.overlay_fight_kick, fingerId = baseId + 1, x = 0.82f, y = 0.65f)
@@ -652,7 +664,66 @@ class Super3Activity : SDLActivity() {
                 rallyControlsMode = prefs.getInt("rally_controls_mode", 0)
                 applyRallyControlsMode()
             }
+        } else if (isStarWars) {
+            swtOverlay = true
+            swtCoinStartVisible = prefs.getBoolean("swt_coin_start_visible", true)
+            swtOperatorVisible = prefs.getBoolean("swt_operator_visible", false)
+            swtStickMode = prefs.getBoolean("swt_stick_mode", false)
+            swtAutoFire = prefs.getBoolean("swt_autofire", false)
+            applyStarWarsVisibility()
+            // Give the emulator time to start, then push the saved aim mode to it.
+            mainHandler.postDelayed({ syncStarWarsNative() }, 4000)
         }
+    }
+
+    private fun applyStarWarsVisibility() {
+        val ov = overlayView ?: return
+        val cs = if (swtCoinStartVisible) View.VISIBLE else View.GONE
+        val op = if (swtOperatorVisible) View.VISIBLE else View.GONE
+        ov.findViewById<View>(R.id.overlay_coin)?.visibility = cs
+        ov.findViewById<View>(R.id.overlay_start)?.visibility = cs
+        ov.findViewById<View>(R.id.overlay_service)?.visibility = op
+        ov.findViewById<View>(R.id.overlay_test)?.visibility = op
+        ov.findViewById<View>(R.id.overlay_save_state)?.visibility = op
+        ov.findViewById<View>(R.id.overlay_fight_stick)?.visibility =
+            if (swtStickMode) View.VISIBLE else View.GONE
+    }
+
+    private fun sendStarWarsCmd(fingerId: Int, on: Boolean) {
+        val x = if (on) 1.0f else 0.0f
+        SDLActivity.onNativeTouch(0, fingerId, MotionEvent.ACTION_DOWN, x, 0.5f, 1.0f)
+        SDLActivity.onNativeTouch(0, fingerId, MotionEvent.ACTION_UP, x, 0.5f, 1.0f)
+    }
+
+    private fun syncStarWarsNative() {
+        if (!swtOverlay) return
+        sendStarWarsCmd(1170, swtStickMode)
+        sendStarWarsCmd(1171, swtAutoFire)
+    }
+
+    private fun setStarWarsStickMode(stick: Boolean) {
+        swtStickMode = stick
+        prefs.edit().putBoolean("swt_stick_mode", stick).apply()
+        applyStarWarsVisibility()
+        sendStarWarsCmd(1170, stick)
+    }
+
+    private fun setStarWarsAutoFire(on: Boolean) {
+        swtAutoFire = on
+        prefs.edit().putBoolean("swt_autofire", on).apply()
+        sendStarWarsCmd(1171, on)
+    }
+
+    private fun toggleStarWarsCoinStart() {
+        swtCoinStartVisible = !swtCoinStartVisible
+        prefs.edit().putBoolean("swt_coin_start_visible", swtCoinStartVisible).apply()
+        applyStarWarsVisibility()
+    }
+
+    private fun toggleStarWarsOperator() {
+        swtOperatorVisible = !swtOperatorVisible
+        prefs.edit().putBoolean("swt_operator_visible", swtOperatorVisible).apply()
+        applyStarWarsVisibility()
     }
 
     private fun angleDiffRad(a: Float, b: Float): Float {
@@ -873,6 +944,7 @@ class Super3Activity : SDLActivity() {
             .setOnDismissListener {
                 quickMenuOpen = false
                 updatePauseState()
+                if (swtOverlay) syncStarWarsNative()
             }
             .create()
 
@@ -919,26 +991,32 @@ class Super3Activity : SDLActivity() {
                 dialog.dismiss()
                 mainHandler.post { RallyVideoSettings.show(rallyAct) }
             }
-            val btnOpacity = cell(row1, "Controls opacity", false)
+            fun aimLabel() = "Aim: " + if (swtStickMode) "Stick" else "Tap"
+            val btnOpacity = cell(row1, if (swtOverlay) aimLabel() else "Controls opacity", false)
             btnOpacity.setOnClickListener {
-                dialog.dismiss()
-                mainHandler.post { rallyOverlay?.showOpacityDialog(rallyAct) }
+                if (swtOverlay) {
+                    setStarWarsStickMode(!swtStickMode)
+                    btnOpacity.text = aimLabel()
+                } else {
+                    dialog.dismiss()
+                    mainHandler.post { rallyOverlay?.showOpacityDialog(rallyAct) }
+                }
             }
 
             // Row 2: coin/start + test/service toggles
             val row2 = menuRow(2)
-            fun coinLabel() =
-                "Coin / Start: " + if (rallyOverlay?.isCoinStartVisible() == true) "Shown" else "Hidden"
+            fun coinShown() = if (swtOverlay) swtCoinStartVisible else rallyOverlay?.isCoinStartVisible() == true
+            fun opShown() = if (swtOverlay) swtOperatorVisible else rallyOverlay?.isOperatorVisible() == true
+            fun coinLabel() = "Coin / Start: " + if (coinShown()) "Shown" else "Hidden"
             val btnCoin = cell(row2, coinLabel(), true)
             btnCoin.setOnClickListener {
-                rallyOverlay?.toggleCoinStart()
+                if (swtOverlay) toggleStarWarsCoinStart() else rallyOverlay?.toggleCoinStart()
                 btnCoin.text = coinLabel()
             }
-            fun opLabel() =
-                "Test / Service: " + if (rallyOverlay?.isOperatorVisible() == true) "Shown" else "Hidden"
+            fun opLabel() = "Test / Service: " + if (opShown()) "Shown" else "Hidden"
             val btnOperator = cell(row2, opLabel(), false)
             btnOperator.setOnClickListener {
-                rallyOverlay?.toggleOperator()
+                if (swtOverlay) toggleStarWarsOperator() else rallyOverlay?.toggleOperator()
                 btnOperator.text = opLabel()
             }
 
@@ -959,12 +1037,18 @@ class Super3Activity : SDLActivity() {
                     2 -> "Always hide"
                     else -> "Auto"
                 }
-            val btnMode = cell(row3, modeLabel(), false)
+            fun fireLabel() = "Auto-fire: " + if (swtAutoFire) "On" else "Off"
+            val btnMode = cell(row3, if (swtOverlay) fireLabel() else modeLabel(), false)
             btnMode.setOnClickListener {
-                rallyControlsMode = (rallyControlsMode + 1) % 3
-                prefs.edit().putInt("rally_controls_mode", rallyControlsMode).apply()
-                applyRallyControlsMode()
-                btnMode.text = modeLabel()
+                if (swtOverlay) {
+                    setStarWarsAutoFire(!swtAutoFire)
+                    btnMode.text = fireLabel()
+                } else {
+                    rallyControlsMode = (rallyControlsMode + 1) % 3
+                    prefs.edit().putInt("rally_controls_mode", rallyControlsMode).apply()
+                    applyRallyControlsMode()
+                    btnMode.text = modeLabel()
+                }
             }
 
             // Row 4: save states + restart
