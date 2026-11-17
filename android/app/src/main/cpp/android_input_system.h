@@ -174,6 +174,11 @@ private:
 
   DualScancode m_touchCrosshairs{SDL_SCANCODE_F8, SDL_SCANCODE_UNKNOWN};
   DualScancode m_touchTorpedo{SDL_SCANCODE_D, SDL_SCANCODE_UNKNOWN}; // Star Wars Trilogy Trigger 2
+  DualScancode m_touchEvent{SDL_SCANCODE_E, SDL_SCANCODE_UNKNOWN};   // Star Wars Trilogy Event button
+  DualScancode m_touchTrigger{SDL_SCANCODE_A, SDL_SCANCODE_UNKNOWN}; // Star Wars Trilogy Trigger 1 (fire)
+  bool m_swtStickMode = false;   // Star Wars: aim with the on-screen stick instead of tapping the screen
+  bool m_swtAutoFire = false;    // Star Wars: pulse the trigger automatically (stick mode only)
+  uint32_t m_autoFireLastMs = 0;
 
   DualScancode m_touchMagPedal1{SDL_SCANCODE_A, SDL_SCANCODE_UNKNOWN};
   DualScancode m_touchMagPedal2{SDL_SCANCODE_S, SDL_SCANCODE_UNKNOWN};
@@ -230,6 +235,7 @@ private:
   // after the crosshair has had time to move to the tapped position.
   bool m_tapToKill = false;
   uint32_t m_tapFireAtMs = 0;
+  uint32_t m_recenterAtMs = 0; // Star Wars: re-center the aim axis after a tap is released
   uint32_t m_tapPressedAtMs = 0;
 
   std::vector<ControllerState> m_controllers;

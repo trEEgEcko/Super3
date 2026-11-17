@@ -486,6 +486,8 @@ struct Super3Host {
     ensureKeyboardFallback("InputStart1", "KEY_1");
     ensureKeyboardFallback("InputServiceA", "KEY_F1");
     ensureKeyboardFallback("InputTestA", "KEY_F2");
+    ensureKeyboardFallback("InputAnalogJoyTrigger2", "KEY_D");
+    ensureKeyboardFallback("InputAnalogJoyEvent", "KEY_E");
     ensureKeyboardFallback("InputJoyUp", "KEY_UP");
     ensureKeyboardFallback("InputJoyDown", "KEY_DOWN");
     ensureKeyboardFallback("InputJoyLeft", "KEY_LEFT");

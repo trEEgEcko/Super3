@@ -289,6 +289,8 @@ void AndroidInputSystem::ApplyConfig(const Util::Config::Node& config)
 
   m_touchCrosshairs.a = keySc(get("InputUISelectCrosshairs", "KEY_F8"), SDL_SCANCODE_F8);
   m_touchTorpedo.a = keySc(get("InputAnalogJoyTrigger2", "KEY_D"), SDL_SCANCODE_D);
+  m_touchEvent.a = keySc(get("InputAnalogJoyEvent", "KEY_E"), SDL_SCANCODE_E);
+  m_touchTrigger.a = keySc(get("InputAnalogJoyTrigger", "KEY_A"), SDL_SCANCODE_A);
 }
 
 void AndroidInputSystem::EnsureGameControllerMappingsLoaded()
@@ -338,6 +340,11 @@ bool AndroidInputSystem::InitializeSystem()
   m_virtualJoyX.store(0, std::memory_order_relaxed);
   m_virtualJoyY = 0;
   m_lastVirtualGear = -1;
+  m_recenterAtMs = 0;
+  // Aim/lever axis must start centered (not at 0,0 = corner), or Star Wars Trilogy
+  // gets stuck on its "setting up lever" screen.
+  if (m_gunTouchEnabled)
+    CenterMouse();
 
   EnsureGameControllerMappingsLoaded();
   SDL_GameControllerEventState(SDL_ENABLE);
@@ -379,6 +386,17 @@ bool AndroidInputSystem::Poll()
 
   const uint32_t now = SDL_GetTicks();
   UpdateGunStickAim(now);
+  if (m_tapToKill && m_swtStickMode && m_swtAutoFire && (now - m_autoFireLastMs) >= 140)
+  {
+    m_autoFireLastMs = now;
+    PulseKeys(m_touchTrigger, 70);
+  }
+  if (m_recenterAtMs != 0 && now >= m_recenterAtMs)
+  {
+    m_recenterAtMs = 0;
+    if (!m_gunFingerActive)
+      CenterMouse();
+  }
   if (m_tapFireAtMs != 0 && now >= m_tapFireAtMs)
   {
     m_tapFireAtMs = 0;
@@ -523,6 +541,25 @@ void AndroidInputSystem::HandleTouch(const SDL_TouchFingerEvent& tf, bool down)
     case 1155: SetKeys(m_touchVr3, down); return;
     case 1156: SetKeys(m_touchVr4, down); return;
     case 1160: SetKeys(m_touchTorpedo, down); return; // Star Wars Trilogy torpedo
+    case 1161: SetKeys(m_touchEvent, down); return;   // Star Wars Trilogy event button (skip scenes)
+    case 1162: SetKeys(m_touchTrigger, down); return; // Star Wars Trilogy fire button
+    case 1170: // Star Wars: aim mode command (x > 0.5 = stick mode, else tap mode)
+      if (down)
+      {
+        m_swtStickMode = (x > 0.5f);
+        m_gunFingerActive = false;
+        m_gunFinger = 0;
+        m_tapFireAtMs = 0;
+        SetMouseButton(0, false);
+        SetVirtualStickFromNormalized(0.5f, 0.5f);
+        CenterMouse();
+        m_recenterAtMs = 0;
+      }
+      return;
+    case 1171: // Star Wars: auto-fire command (x > 0.5 = on)
+      if (down)
+        m_swtAutoFire = (x > 0.5f);
+      return;
     case 1110: SetKeys(m_touchPunch, down); return;
     case 1111: SetKeys(m_touchKick, down); return;
     case 1112: SetKeys(m_touchGuard, down); return;
@@ -775,12 +812,17 @@ void AndroidInputSystem::HandleTouch(const SDL_TouchFingerEvent& tf, bool down)
   // a physical mouse.
   if (m_gunTouchEnabled)
   {
+    // Star Wars stick mode: the on-screen stick aims, taps on the screen do nothing.
+    if (m_tapToKill && m_swtStickMode)
+      return;
+
     if (down)
     {
       if (!m_gunFingerActive)
       {
         m_gunFingerActive = true;
         m_gunFinger = tf.fingerId;
+        m_recenterAtMs = 0;
         SetMousePosFromNormalized(x, y);
         if (m_tapToKill)
           m_tapFireAtMs = SDL_GetTicks() + 40; // let the crosshair reach the tap first
@@ -812,6 +854,9 @@ void AndroidInputSystem::HandleTouch(const SDL_TouchFingerEvent& tf, bool down)
         }
         m_gunFingerActive = false;
         m_gunFinger = 0;
+        // Star Wars: let the shot register, then return the lever to center.
+        if (m_tapToKill)
+          m_recenterAtMs = SDL_GetTicks() + 300;
       }
     }
     return;
