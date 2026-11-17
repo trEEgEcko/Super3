@@ -257,8 +257,10 @@ class Super3Activity : SDLActivity() {
                         GameInputsIndex.hasAnyInputType(gamesXml, game, setOf("analog_joystick"))
                 )
 
+        val isStarWars = game.startsWith("swtrilgy")
         val showFightButtons = isFighting || isSpikeout || isSoccer || isTwinJoysticks || isFishing || isSki
-        val showAimPad = isGunGame || needsAimStickAndButtons
+        // Star Wars Trilogy: tap anywhere on screen to aim+fire, so no aim pad.
+        val showAimPad = (isGunGame || needsAimStickAndButtons) && !isStarWars
         val showFightStick = (showFightButtons || isMagTruck) && !showAimPad
         val showExtraButtons = showFightButtons || needsAimStickAndButtons
 
@@ -415,10 +417,19 @@ class Super3Activity : SDLActivity() {
                     1110
                 }
 
-            bindHeld(R.id.overlay_fight_punch, fingerId = baseId + 0, x = 0.90f, y = 0.55f)
-            bindHeld(R.id.overlay_fight_kick, fingerId = baseId + 1, x = 0.82f, y = 0.65f)
-            bindHeld(R.id.overlay_fight_guard, fingerId = baseId + 2, x = 0.90f, y = 0.45f)
-            bindHeld(R.id.overlay_fight_escape, fingerId = baseId + 3, x = 0.82f, y = 0.35f)
+            if (isStarWars) {
+                // Single torpedo button (Trigger 2 / KEY_D); hide the unused E/G/K/P set.
+                overlay.findViewById<MaterialButton>(R.id.overlay_fight_punch)?.text = "T"
+                overlay.findViewById<View>(R.id.overlay_fight_kick)?.visibility = View.GONE
+                overlay.findViewById<View>(R.id.overlay_fight_guard)?.visibility = View.GONE
+                overlay.findViewById<View>(R.id.overlay_fight_escape)?.visibility = View.GONE
+                bindHeld(R.id.overlay_fight_punch, fingerId = 1160, x = 0.90f, y = 0.55f)
+            } else {
+                bindHeld(R.id.overlay_fight_punch, fingerId = baseId + 0, x = 0.90f, y = 0.55f)
+                bindHeld(R.id.overlay_fight_kick, fingerId = baseId + 1, x = 0.82f, y = 0.65f)
+                bindHeld(R.id.overlay_fight_guard, fingerId = baseId + 2, x = 0.90f, y = 0.45f)
+                bindHeld(R.id.overlay_fight_escape, fingerId = baseId + 3, x = 0.82f, y = 0.35f)
+            }
         }
 
         if (isTwinJoysticks) {
