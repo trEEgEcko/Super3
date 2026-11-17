@@ -606,6 +606,7 @@ struct Super3Host {
       const bool analogJoystickGame = (game.inputs & Game::INPUT_ANALOG_JOYSTICK) != 0;
       inputSystem.SetGunTouchEnabled(gunGame || analogJoystickGame);
       inputSystem.SetGunStickAimEnabled(gunGame || analogJoystickGame);
+      inputSystem.SetTapToKillEnabled(IsStarWarsTrilogyGame(game.name));
 
       const bool analogGunGame = (game.inputs & (Game::INPUT_ANALOG_GUN1 | Game::INPUT_ANALOG_GUN2)) != 0;
       inputSystem.SetVirtualAnalogGunEnabled(analogGunGame);

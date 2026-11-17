@@ -288,6 +288,7 @@ void AndroidInputSystem::ApplyConfig(const Util::Config::Node& config)
   m_touchSkiSelect2.a = keySc(get("InputSkiSelect2", "KEY_W"), SDL_SCANCODE_W);
 
   m_touchCrosshairs.a = keySc(get("InputUISelectCrosshairs", "KEY_F8"), SDL_SCANCODE_F8);
+  m_touchTorpedo.a = keySc(get("InputAnalogJoyTrigger2", "KEY_D"), SDL_SCANCODE_D);
 }
 
 void AndroidInputSystem::EnsureGameControllerMappingsLoaded()
@@ -378,6 +379,15 @@ bool AndroidInputSystem::Poll()
 
   const uint32_t now = SDL_GetTicks();
   UpdateGunStickAim(now);
+  if (m_tapFireAtMs != 0 && now >= m_tapFireAtMs)
+  {
+    m_tapFireAtMs = 0;
+    m_tapPressedAtMs = now;
+    if (m_gunFingerActive)
+      SetMouseButton(0, true);   // still held: hold-to-shoot
+    else
+      PulseMouseButton(0, 100);  // quick tap: short guaranteed pulse
+  }
   if (m_pendingReloadTriggerAtMs != 0 && now >= m_pendingReloadTriggerAtMs)
   {
     // Manual reload helper when the core's InputAutoTrigger is disabled:
@@ -512,6 +522,7 @@ void AndroidInputSystem::HandleTouch(const SDL_TouchFingerEvent& tf, bool down)
     case 1154: SetKeys(m_touchVr2, down); return;
     case 1155: SetKeys(m_touchVr3, down); return;
     case 1156: SetKeys(m_touchVr4, down); return;
+    case 1160: SetKeys(m_touchTorpedo, down); return; // Star Wars Trilogy torpedo
     case 1110: SetKeys(m_touchPunch, down); return;
     case 1111: SetKeys(m_touchKick, down); return;
     case 1112: SetKeys(m_touchGuard, down); return;
@@ -771,14 +782,34 @@ void AndroidInputSystem::HandleTouch(const SDL_TouchFingerEvent& tf, bool down)
         m_gunFingerActive = true;
         m_gunFinger = tf.fingerId;
         SetMousePosFromNormalized(x, y);
-        SetMouseButton(0, true); // left = trigger (held)
+        if (m_tapToKill)
+          m_tapFireAtMs = SDL_GetTicks() + 40; // let the crosshair reach the tap first
+        else
+          SetMouseButton(0, true); // left = trigger (held)
       }
     }
     else
     {
       if (m_gunFingerActive && tf.fingerId == m_gunFinger)
       {
-        SetMouseButton(0, false);
+        if (m_tapToKill)
+        {
+          const uint32_t now = SDL_GetTicks();
+          if (m_tapFireAtMs == 0 && m_mouseButtons[0])
+          {
+            // Already firing: keep the trigger for at least 100ms total so quick taps register.
+            const uint32_t held = now - m_tapPressedAtMs;
+            if (held < 100)
+              PulseMouseButton(0, 100 - held);
+            else
+              SetMouseButton(0, false);
+          }
+          // If the fire is still pending, Poll() will fire a 100ms pulse.
+        }
+        else
+        {
+          SetMouseButton(0, false);
+        }
         m_gunFingerActive = false;
         m_gunFinger = 0;
       }

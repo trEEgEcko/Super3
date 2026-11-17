@@ -27,6 +27,7 @@ public:
   void SetVirtualShifterMode(bool shift4, bool shiftUpDown);
   void SetVirtualAnalogGunEnabled(bool enabled);
   void SetVirtualAnalogJoystickEnabled(bool enabled);
+  void SetTapToKillEnabled(bool enabled) { m_tapToKill = enabled; }
   void SetGyroSteer(float steer); // [-1..1]
 
   // Called from the SDL event loop (main thread).
@@ -172,6 +173,7 @@ private:
   DualScancode m_touchFishingTension{SDL_SCANCODE_T, SDL_SCANCODE_UNKNOWN};
 
   DualScancode m_touchCrosshairs{SDL_SCANCODE_F8, SDL_SCANCODE_UNKNOWN};
+  DualScancode m_touchTorpedo{SDL_SCANCODE_D, SDL_SCANCODE_UNKNOWN}; // Star Wars Trilogy Trigger 2
 
   DualScancode m_touchMagPedal1{SDL_SCANCODE_A, SDL_SCANCODE_UNKNOWN};
   DualScancode m_touchMagPedal2{SDL_SCANCODE_S, SDL_SCANCODE_UNKNOWN};
@@ -223,6 +225,12 @@ private:
   bool m_gunAutoTrigger = false;
   uint32_t m_suppressGunTriggerUntilMs = 0;
   uint32_t m_pendingReloadTriggerAtMs = 0;
+
+  // Tap-to-kill (Star Wars Trilogy): short taps become a guaranteed short trigger pulse
+  // after the crosshair has had time to move to the tapped position.
+  bool m_tapToKill = false;
+  uint32_t m_tapFireAtMs = 0;
+  uint32_t m_tapPressedAtMs = 0;
 
   std::vector<ControllerState> m_controllers;
   std::vector<uint8_t> m_keys; // indexed by SDL_Scancode
